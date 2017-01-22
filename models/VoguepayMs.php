@@ -34,27 +34,62 @@ use yii\httpclient\Client;
  */
 class VoguepayMs extends \yii\db\ActiveRecord
 {
+    const EVENT_BEFORE_SET_REQUEST = 'beforeSetRequest';
+    const EVENT_AFTER_SET_REQUEST = 'afterSetRequest';
+    const EVENT_BEFORE_SEND_REQUEST = 'beforeSendRequest';
+    const EVENT_AFTER_SEND_REQUEST = 'afterSendRequest';
+    const EVENT_BEFORE_SEND_RESPONSE = 'beforeSendResponse';
+    const EVENT_AFTER_SEND_RESPONSE = 'afterSendResponse';
+
     /**
+     * If the response should be returned as a pay button, defaults to false, 
+     * which means redirect to the response link (voguepay) for payment.
      *
-     * @var bool If the response should be returned as a button, defaults to false, which means redirect to the rsponse link.
+     * @var bool 
      */
-    public $showButton = false;
+    public $showPayButton = false;
     
     /**
+     * The parameters (without https://www.voguepay.com) to send to VoguePay for a response link on success 
+     * or failure error code if not successful.
      *
-     * @var string $requestLink The link to send to VoguePay for a response link on success or failure error code.
+     * @var string
      */
-    public $requestLink;
-       
+    public $requestParams;
+    
+     /**
+     * Constructor.
+     * The default implementation does three things:
+     *
+     * - Checks if isNewRecord, if false, calls the setRequest method to set requestParams property.
+     * - Initializes the object with the given configuration `$config`.
+     * - Call [[init()]].
+     *
+     * If this method is overridden in a child class, it is recommended that
+     *
+     * - the last parameter of the constructor is a configuration array, like `$config` here.
+     * - call the parent implementation at the end of the constructor.
+     *
+     * @param array $config name-value pairs that will be used to initialize the object properties
+     */
     public function __construct($config = array()) {
-        $this->dddDeveloperCode = '573cedec3bee0';
         if(!$this->isNewRecord){
-            //set $requestLink is not new record
+            //set $requestParams as it is not new a record
             $this->setRequest();
         }
         parent::__construct($config);
     }
     
+    public function init() {
+        parent::init();
+        $this->on('beforeSetRequest', [$this, 'beforeSetRequest']);
+        $this->on('afterSetRequest', [$this, 'afterSetRequest']);
+        $this->on('beforeSendRequest', [$this, 'beforeSendRequest']);
+        $this->on('afterSendRequest', [$this, 'afterSendRequest']);
+        $this->on('beforeSendResponse', [$this, 'beforeSendResponse']);
+        $this->on('beforeSendResponse', [$this, 'beforeSendResponse']);
+    }
+
     /**
      * @inheritdoc
      */
@@ -110,17 +145,51 @@ class VoguepayMs extends \yii\db\ActiveRecord
     public static function find()
     {
         return new VoguepayMsQuery(get_called_class());
+    }  
+     
+    /**
+     * Set the parameters to send with this request to VoguePay
+     * 
+     * @throws InvalidConfigException If either aaaMerchantId, mmmMemo, or tttTotalCost is empty.
+     */
+    public function setRequest()
+    {
+        if(empty($this->aaaMerchantId || $this->mmmMemo || $this->tttTotalCost)){
+            throw new InvalidConfigException($this->aaaMerchantId. ' '.$this->mmmMemo.' and '.$this->tttTotalCost.' are required.');
+        }
+        $this->requestParams = "?p=linkToken&v_merchant_id=$this->aaaMerchantId&memo=$this->mmmMemo&total=$this->tttTotalCost";
+        if(!empty($this->rrrMerchantRef)){
+            $this->requestParams .= "&merchant_ref=$this->rrrMerchantRef";
+        }
+        if($this->cccRecurrentBillingStatus){
+            if($this->iiiRecurrenceInterval <= 1){
+                throw new InvalidConfigException( 'iiiRecurrenceInterval most be greater than 1 if cccRecurrentBillingStatus is set to true');
+            }
+            $this->requestParams .= "&recurrent=$this->cccRecurrentBillingStatus&interval=$this->iiiRecurrenceInterval";
+        }
+        if(!empty($this->nnnNotificationUrl)){
+            $this->requestParams .= "&notify_url=$this->nnnNotificationUrl";
+        }
+        if(!empty($this->sssSuccessUrl)){
+            $this->requestParams .= "&success_url=$this->sssSuccessUrl";
+        }
+        if(!empty($this->fffFailUrl)){
+            $this->requestParams .= "&fail_url=$this->fffFailUrl";
+        }
+        $this->dddDeveloperCode = (empty($this->dddDeveloperCode)) ? '573cedec3bee0' : $this->dddDeveloperCode;
+        $this->requestParams .= "&developer_code=$this->dddDeveloperCode";
     }
     
     /**
-     * Sends request to voguepay for a payment link and saves if successful
+     * First checks from database if rrrMerchantRef exits and msResponse has not expired. 
+     * Sends request to VoguePay for a payment link and saves to database if successful
      * 
-     * @return \tecsin\pay2\models\VoguepayMs
+     * @return \tecsin\pay2\models\VoguepayMs 
      */
     public function sendRequest()
     {
         //to avoid sending request twice when response has not expired
-        if(self::findOne(['msID' => $this->msID])){
+        if(self::findOne(['rrrMerchantRef' => $this->rrrMerchantRef])){
             if(!$this->hasExpired()){
                 return $this;
             }
@@ -129,51 +198,21 @@ class VoguepayMs extends \yii\db\ActiveRecord
         $client = new Client([
             'baseUrl' => 'https://www.voguepay.com',
             ]);
-        $response = $client->get($this->requestLink)->send();
+        $response = $client->get($this->requestParams)->send();
         $this->msResponse = $response->content;
+        //if a valid url then request was successful
         if((new UrlValidator())->validate($this->msResponse)){
-            $this->msExpireAt = strtotime("next 24 hours");
-            $this->save();
+            $this->msExpireAt = strtotime("24 hours");
+            $this->save(false);
         }
+        return $this;
     }
+   
     
     /**
      * 
-     * @return string Sets the request parameters to be sent to voguepay
-     * @throws InvalidConfigException
-     */
-    public function setRequest()
-    {
-        if(empty($this->aaaMerchantId || $this->mmmMemo || $this->tttTotalCost)){
-            throw new InvalidConfigException($this->aaaMerchantId. ' '.$this->mmmMemo.' and '.$this->tttTotalCost.' are required.');
-        }
-        $this->requestLink = "?p=linkToken&v_merchant_id=$this->aaaMerchantId&memo=$this->mmmMemo&total=$this->tttTotalCost";
-        if(!empty($this->rrrMerchantRef)){
-            $this->requestLink .= "&merchant_ref=$this->rrrMerchantRef";
-        }
-        if($this->cccRecurrentBillingStatus){
-            if($this->iiiRecurrenceInterval <= 1){
-                throw new InvalidConfigException( 'iiiRecurrenceInterval most be greater than 1 if cccRecurrentBillingStatus is set to true');
-            }
-            $this->requestLink .= "&recurrent=$this->cccRecurrentBillingStatus&interval=$this->iiiRecurrenceInterval";
-        }
-        if(!empty($this->nnnNotificationUrl)){
-            $this->requestLink .= "&notify_url=$this->nnnNotificationUrl";
-        }
-        if(!empty($this->sssSuccessUrl)){
-            $this->requestLink .= "&success_url=$this->sssSuccessUrl";
-        }
-        if(!empty($this->fffFailUrl)){
-            $this->requestLink .= "&fail_url=$this->fffFailUrl";
-        }
-        $this->requestLink .= "&developer_code=$this->dddDeveloperCode";
-        return $this->requestLink;
-    }
-    
-    /**
-     * 
-     * First checks if $msResponse is a valid url, then redirects or send json formated response depending on $showButton value.
-     * @return mixed Redirects to payment page or send result in json
+     * First checks if $msResponse is a valid url, then redirects or send json formated response depending on $showPayButton value.
+     * @return mixed Redirects to payment page or send result in json if msResponse is not a valid link or showPayButton is set to true.
      */
     public function sendResponse()
     {
@@ -189,7 +228,7 @@ class VoguepayMs extends \yii\db\ActiveRecord
             ]);
         }
         //not showing a button to the user, redirect to payment pay automatically.
-        if(!$this->showButton){
+        if(!$this->showPayButton){
             return Yii::$app->getResponse()->redirect($this->msResponse);
         } else {
             //show a pay button to the user, you will be getting a json response payment link to work with.    
@@ -204,7 +243,7 @@ class VoguepayMs extends \yii\db\ActiveRecord
     
     /**
      * 
-     * @param string $ref The reference coe to search database with or the current ref if not set
+     * @param string $ref The rrrMerchantRef code to search database with or the current rrrMerchantRef if not passed as a param.
      * @return string
      */
     public function getResponse($ref = null)
@@ -290,13 +329,13 @@ class VoguepayMs extends \yii\db\ActiveRecord
     
     /**
      * 
-     * Expires within 23hours, 50minutes so as to be 10 minutes lower than the original 
+     * Expires within 23hours, 50minutes so as to be 6 minutes lower than the original 
      * 24hours from VoguePay to ensure consistency.
      * @return boolean If the response link ($msResponse) has expired.
      */
     public function hasExpired()
     {
-        if($this->msExpireAt >= strtotime('10 minutes ago')){
+        if($this->msExpireAt >= strtotime('23 hours 56 minutes ago')){
             return true;
         }
         return false;

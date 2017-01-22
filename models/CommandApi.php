@@ -460,7 +460,7 @@ class CommandApi extends \yii\base\Model {
     
     public function getResponse()
     {
-        return $this->cResponse;
+        return $this->cResponse->content;
     }
     
     public function VerifyResponse()
