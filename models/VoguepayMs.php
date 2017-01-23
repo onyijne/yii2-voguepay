@@ -335,7 +335,7 @@ class VoguepayMs extends \yii\db\ActiveRecord
      */
     public function hasExpired()
     {
-        if($this->msExpireAt >= strtotime('23 hours 56 minutes ago')){
+        if($this->msExpireAt < strtotime('23 hours 56 minutes ago')){
             return true;
         }
         return false;
