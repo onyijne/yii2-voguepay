@@ -32,4 +32,38 @@ First set up the database by running the migration code :
 php yii migrate --migrationPath="@vendor/tecsin/yii2-voguepay/migrations"
 ```
 
-DOCUMENTATION IS ON ITS WAY! When I am back to Port Harcourt City.
+Mobile/Server-to-Server
+-----
+
+You can either send user to VoguePay payment page directly (this is the default):
+
+```php
+    $MsModel = Yii::createObject(\tecsin\pay2\models\VoguepayMs::className(), ['aaaMerchantId' => '11111', 'mmmMemo' => 'one sparklyn yellow wedding dress', 'tttTotalCost' => '200310', 'rrrMerchantRef' => time().mt_rand(0,999999999)]);
+    if($MsModel->validate()){
+       return $MsModel->setRequest()->sendRequest()->sendResponse();
+    } 
+```
+
+Or show the user a pay button (set showPayButton property to true):
+
+```php
+    $MsModel = Yii::createObject(\tecsin\pay2\models\VoguepayMs::className(), ['aaaMerchantId' => '11111', 'mmmMemo' => 'one sparklyn yellow wedding dress', 'tttTotalCost' => '200310', 'rrrMerchantRef' => time().mt_rand(0,999999999), 'showPayButton' => true]);
+    if($MsModel->validate()){
+        $response =  $MsModel->setRequest()->sendRequest()->sendResponse();
+        return $response;//response is json {status: "success|error", success|error : { message: "https://www.voguepay.com/payment-url|errorMesssge"}}
+    } 
+```
+
+Command API
+-----
+
+With the Command API you can Fetch records of transactions, Pay (send money) to VoguePay merchants, Withdraw money to various bank accounts, and create a new user on VoguePay.
+
+
+See [VoguePay](https://voguepay.com/developers) Developer Page
+
+TODO
+-----
+
+Add user interface for management
+Create a comprehensive documentation

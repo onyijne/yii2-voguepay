@@ -150,6 +150,8 @@ class VoguepayMs extends \yii\db\ActiveRecord
     /**
      * Set the parameters to send with this request to VoguePay
      * 
+     * @return \tecsin\pay2\models\VoguepayMs 
+     * 
      * @throws InvalidConfigException If either aaaMerchantId, mmmMemo, or tttTotalCost is empty.
      */
     public function setRequest()
@@ -178,6 +180,7 @@ class VoguepayMs extends \yii\db\ActiveRecord
         }
         $this->dddDeveloperCode = (empty($this->dddDeveloperCode)) ? '573cedec3bee0' : $this->dddDeveloperCode;
         $this->requestParams .= "&developer_code=$this->dddDeveloperCode";
+        return $this;
     }
     
     /**
@@ -355,5 +358,35 @@ class VoguepayMs extends \yii\db\ActiveRecord
         } else {
             return 'Unknown error occured, please try again or contact an admin.';    
         }
+    }
+    
+    public function beforeSetRequest()
+    {
+        
+    }
+    
+    public function afterSetRequest()
+    {
+        
+    }
+    
+    public function beforeSendRequest()
+    {
+        
+    }
+    
+    public function afterSendRequest()
+    {
+        
+    }
+    
+    public function beforeSendResponse()
+    {
+        
+    }
+    
+    public function afterSendResponse()
+    {
+        
     }
 }

@@ -45,8 +45,8 @@ use Yii;
  */
 class CommandApi extends \yii\base\Model {
     
-    const EVENT_BEFORE_SEND_COMMAND = 'beforesendcommand';
-    const EVENT_AFTER_SEND_COMMAND = 'aftersendcommand';
+    const EVENT_BEFORE_SEND_COMMAND = 'beforeSendCommand';
+    const EVENT_AFTER_SEND_COMMAND = 'afterSendCommand';
 
     protected $baseUrl = 'https://voguepay.com/api/';
     public $ref;
@@ -69,7 +69,7 @@ class CommandApi extends \yii\base\Model {
     
     /**
      *
-     *  OPTIONAL FOR FETCH, accepted keys are
+     *  OPTIONAL: FOR FETCH, accepted keys are
      *  - quantity : (value = int)the numbers of result you want back, default to 10, 
      *  - status : (value = string) the status of transactions that you want, defaults to all
      *  - channel : (value = string) the channel of payment you want in the results
@@ -235,21 +235,26 @@ class CommandApi extends \yii\base\Model {
     
     public function init() {
         parent::init();
-        $this->on('aftersendcommand', [$this, 'notifySystem']);
+        $this->on('beforeSendCommand', [$this, 'beforeSendCommand']);
+        $this->on('afterSendCommand', [$this, 'afterSendCommand']);
     }
 
         public function fetch()
     {
         $this->task = 'fetch';
         $this->setData();
-        return $this->sendCommand();        
+        $response = $this->sendCommand();
+        $this->trigger('afterSendCommand');
+        return $response;        
     }
     
     public function withdraw()
     {  
         $this->task =  'withdraw';
         $this->setData();
-        return $this->sendCommand();
+        $response = $this->sendCommand();
+        $this->trigger('afterSendCommand');
+        return $response;
     }
     
     /**
@@ -260,21 +265,27 @@ class CommandApi extends \yii\base\Model {
     {  
         $this->task =  'withdraw';        
         $this->setData('multiple');
-        return $this->sendCommand();
+        $response = $this->sendCommand();
+        $this->trigger('afterSendCommand');
+        return $response;
     }
     
     public function pay()
     {  
         $this->task =  'pay';
         $this->setData();
-        return $this->sendCommand();
+        $response = $this->sendCommand();
+        $this->trigger('afterSendCommand');
+        return $response;
     }
     
     public function create()
     {  
         $this->task =  'create';
         $this->setData();
-        return $this->sendCommand();
+        $response = $this->sendCommand();
+        $this->trigger('afterSendCommand');
+        return $response;
     }
 
     /**
@@ -311,6 +322,9 @@ class CommandApi extends \yii\base\Model {
         throw new InvalidConfigException('You need to set a valid task.');
     }
     
+    /**
+     * @since 1.0.0
+     */
     private function setFetchDetails() {
         if(empty($this->filterFetchData) || !isset($this->filterFetchData['quantity'])){
             $this->data['quantity'] = 10;
@@ -388,7 +402,7 @@ class CommandApi extends \yii\base\Model {
     }
 
     /**
-     * @return mixed Sends the command and return it's array response
+     * @return mixed Sends the command and return it's json response
      */
     protected function sendCommand()
     {
@@ -460,7 +474,7 @@ class CommandApi extends \yii\base\Model {
     
     public function getResponse()
     {
-        return $this->cResponse->content;
+        return Json::decode($this->cResponse->content);
     }
     
     public function VerifyResponse()
@@ -485,7 +499,7 @@ class CommandApi extends \yii\base\Model {
     }
     
     /**
-     * do not call this method directly
+     * Save the command result to database
      * 
      * @return boolean
      */
@@ -506,5 +520,15 @@ class CommandApi extends \yii\base\Model {
             return;
         }
         return true;
+    }
+    
+    public function beforeSendCommand()
+    {
+        
+    }
+    
+    public function afterSendCommand()
+    {
+        $this->notifySystem();
     }
 }
