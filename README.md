@@ -65,5 +65,6 @@ See [VoguePay](https://voguepay.com/developers) Developer Page
 TODO
 -----
 
-Add user interface for management
-Create a comprehensive documentation
+Add user interface for management.
+
+Create a comprehensive documentation.
