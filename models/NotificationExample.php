@@ -17,7 +17,7 @@ class NotificationExample  {
     
      public function voguepayNotification(array $transaction ) {
         $ref = $transaction['merchant_ref'];
-        $sales = (Sales::find()->where(['ref'=> $ref])->exists() ? Sales::findOne(['ref'=> $ref]) : new Sales());
+        $sales = (Sales::find()->where(['ref'=> $ref])->exists()) ? Sales::findOne(['ref'=> $ref]) : new Sales();
         if($sales->remark == 'Payment complete'){
             //to avoid crediting a transaction twice
             return true;
