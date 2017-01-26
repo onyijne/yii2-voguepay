@@ -59,7 +59,7 @@ Command API
 
 With the Command API you can Fetch records of transactions, Pay (send money) to VoguePay merchants, Withdraw money to various bank accounts, and create a new user on VoguePay.
 
- ## Read More.
+## Read More.
  
 See [VoguePay](https://voguepay.com/developers) Developer Page
 
