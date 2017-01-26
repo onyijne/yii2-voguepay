@@ -10,12 +10,6 @@
             "email": "samuel@sajflow.com"
         }
     ],
-    "repositories":[
-        {
-            "type": "git",
-            "url": "https://github.com/tecsin/yii2-voguepay"
-        }
-    ],
     "require": {
         "yiisoft/yii2": ">=2.0.8",
         "yiisoft/yii2-httpclient": "~2.0.0"
