@@ -67,5 +67,5 @@ TODO
 -----
 
 Add user interface for management.
-
-Create a comprehensive documentation.
+ 
+Update documentation 
