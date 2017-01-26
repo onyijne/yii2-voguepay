@@ -1,7 +1,10 @@
 Pay2
 ====
 VoguePay Payment Processor Extension for Yii2 Framework (Command API is in beta).
+ 
+Pay2 is a Yii2 wrapper for VoguePay Payment Processor Mobile/Server-to-Server and Command Api. Mobile/Server-to-Server API let you get a link token for payment by sending your merchant ID and other necessary parameters. 
 
+Command API allows you to directly perfom several actions (fetch transactions details, pay a user, withdraw money to bank accounts, create a new user) on VoguePay from your application.
 
 Installation
 ------------
