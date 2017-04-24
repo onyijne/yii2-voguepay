@@ -36,6 +36,7 @@ use yii\helpers\ArrayHelper;
 use yii\base\InvalidConfigException;
 use tecsin\pay2\models\CommandApiHistory;
 use Yii;
+use \string;
 
 /**
  * Description of CommandApi
@@ -47,18 +48,72 @@ class CommandApi extends \yii\base\Model {
     
     const EVENT_BEFORE_SEND_COMMAND = 'beforeSendCommand';
     const EVENT_AFTER_SEND_COMMAND = 'afterSendCommand';
-
+    
+    /**
+     *
+     * @var string If it is single or multiple
+     */
+    protected $commandType;
+    
+    /**
+     *
+     * @var string The API base URL 
+     */
     protected $baseUrl = 'https://voguepay.com/api/';
-    public $ref;
-    public $task; 
-    public $merchant_id ;
-    public $my_username ;
-    public $merchant_email_on_voguepay;
-    public $command_api_token;
-    public $hash;
-    public $fetchQty;
+    
+    /**
+     *
+     * @var \yii\httpclient\Client 
+     */
     protected $client;
-    private $type;
+    
+    /**
+     *
+     * @var string The reference
+     */
+    public $ref;
+    
+    /**
+     *
+     * @var string The task to perform (create, fetch, withdraw)
+     */
+    public $task; 
+    
+    /**
+     *
+     * @var string The merchant id on voguepay
+     */
+    public $merchant_id ;
+    
+    /**
+     *
+     * @var string The username of the user on vogurpay
+     */
+    public $my_username ;
+    
+    /**
+     *
+     * @var string The email of the user on voguepay
+     */
+    public $merchant_email_on_voguepay;
+    
+    /**
+     *
+     * @var string The user command API token on voguepay
+     */
+    public $command_api_token;
+    
+    /**
+     *
+     * @var string The security hash to send to voguepay to check authenticity
+     */
+    public $hash;
+    
+    /**
+     *
+     * @var integer The quantity fetched.
+     */
+    public $fetchQty;    
 
 
     /**
@@ -239,7 +294,7 @@ class CommandApi extends \yii\base\Model {
         $this->on('afterSendCommand', [$this, 'afterSendCommand']);
     }
 
-        public function fetch()
+    public function fetch()
     {
         $this->task = 'fetch';
         $this->setData();
@@ -291,12 +346,12 @@ class CommandApi extends \yii\base\Model {
     /**
      * sets data to be sent via request
      * 
-     * @param string $type
+     * @param string $commandType
      * @param int $qty
      * @return mixed
      * @throws InvalidConfigException
      */
-    private function setData(string $type = 'single')
+    private function setData(\string $commandType = 'single')
     {
         $this->ref =  time().mt_rand(0,999999999);
         $this->hash = hash('sha512', $this->command_api_token.$this->task.$this->merchant_email_on_voguepay.$this->ref);
@@ -306,15 +361,15 @@ class CommandApi extends \yii\base\Model {
             'ref' => $this->ref, 
             'hash' => $this->hash, 
         ];
-        $this->type = $type;
+        $this->commandType = $commandType;
         if($this->data['task'] == 'fetch'){
             return $this->setFetchDetails();
         }
         if($this->data['task'] == 'withdraw'){
-            return $this->setWithdrawalDetails($type);
+            return $this->setWithdrawalDetails($commandType);
         }
         if($this->data['task'] == 'pay'){
-            return $this->setPayDetails($type);
+            return $this->setPayDetails($commandType);
         }
         if($this->data['task'] == 'create'){
             return $this->setCreateDetails();
@@ -336,14 +391,14 @@ class CommandApi extends \yii\base\Model {
     
     /**
      * 
-     * @param string $type single or multiple
+     * @param string $commandType single or multiple
      * @return mixed
      * @throws InvalidConfigException
      */
-    private function setWithdrawalDetails(string $type) {
+    private function setWithdrawalDetails(\string $commandType) {
         
         //check if multiple
-        if($type == 'multiple'){
+        if($commandType == 'multiple'){
             if(!ArrayHelper::isIndexed($this->filterMultipleWithdrawData, true) || empty($this->filterMultipleWithdrawData)){
                 throw new InvalidConfigException('filterMultipleWithdrawData attribute is most be a consecutive indexed array whose values are arrays, please check the documentation.');
             }
@@ -368,8 +423,8 @@ class CommandApi extends \yii\base\Model {
         
     }
     
-    private function setPayDetails(string $type) {
-        if($type == 'single'){
+    private function setPayDetails(string $commandType) {
+        if($commandType == 'single'){
             if(empty($this->filterPayData) || !key_exists('amount', $this->filterPayData) || !key_exists('seller', $this->filterPayData) || !key_exists('memo', $this->filterPayData)){
                 throw new InvalidConfigException('amount, seller, and memo as all required as filterPayData property keys. Please see documentation for more.');
             }
@@ -506,14 +561,14 @@ class CommandApi extends \yii\base\Model {
     public function notifySystem()
     {
         $reply_array = Json::decode($this->cResponse->content);
-        if($this->type == 'single'){
+        if($this->commandType == 'single'){
             $status = (stripos($this->cResponse->content, '-') || !$this->VerifyResponse() ) ? $this->getResponseError($this->cResponse->content) : $reply_array['description'];
-            $model = Yii::createObject(CommandApiHistory::className(), ['ref' => $this->ref, 'task' => $this->task, 'type' => $this->type, 'status' => $status]);
+            $model = new CommandApiHistory(['ref' => $this->ref, 'task' => $this->task, 'commandType' => $this->commandType, 'status' => $status]);
             $model->save();
-        } elseif ($this->type == 'multiple') {
+        } elseif ($this->commandType == 'multiple') {
             foreach($reply_array['list'] as $list){
 		$status = (stripos($this->cResponse->content, '-') || !$this->VerifyResponse() ) ? $this->getResponseError($this->cResponse->content) : $list['description'];
-                $model = Yii::createObject(CommandApiHistory::className(), ['ref' => $this->ref, 'task' => $this->task, 'type' => $this->type, 'status' => $status]);
+                $model = new CommandApiHistory(['ref' => $this->ref, 'task' => $this->task, 'commandType' => $this->commandType, 'status' => $status]);
                 $model->save();
        	    }
         } else {
