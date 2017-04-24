@@ -14,13 +14,13 @@ The preferred way to install this extension is through [composer](http://getcomp
 Either run
 
 ```
-composer require --prefer-dist tecsin/yii2-voguepay "*"
+composer require --prefer-dist tecsin/yii2-voguepay "0.0.1"
 ```
 
 or add
 
 ```
-"tecsin/yii2-voguepay": "*"
+"tecsin/yii2-voguepay": "0.0.1"
 ```
 
 to the require section of your `composer.json` file.
