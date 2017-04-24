@@ -562,12 +562,12 @@ class CommandApi extends \yii\base\Model {
     {
         $reply_array = Json::decode($this->cResponse->content);
         if($this->commandType == 'single'){
-            $status = (stripos($this->cResponse->content, '-') || !$this->VerifyResponse() ) ? $this->getResponseError($this->cResponse->content) : $reply_array['description'];
+            $status = ((stripos($this->cResponse->content, '-') == 0) || !$this->VerifyResponse() ) ? $this->getResponseError($this->cResponse->content) : $reply_array['description'];
             $model = new CommandApiHistory(['ref' => $this->ref, 'task' => $this->task, 'commandType' => $this->commandType, 'status' => $status]);
             $model->save();
         } elseif ($this->commandType == 'multiple') {
             foreach($reply_array['list'] as $list){
-		$status = (stripos($this->cResponse->content, '-') || !$this->VerifyResponse() ) ? $this->getResponseError($this->cResponse->content) : $list['description'];
+		$status = ((stripos($this->cResponse->content, '-') == 0) || !$this->VerifyResponse() ) ? $this->getResponseError($this->cResponse->content) : $list['description'];
                 $model = new CommandApiHistory(['ref' => $this->ref, 'task' => $this->task, 'commandType' => $this->commandType, 'status' => $status]);
                 $model->save();
        	    }
