@@ -41,7 +41,7 @@ Mobile/Server-to-Server
 You can either send user to VoguePay payment page directly (this is the default):
 
 ```php
-    $MsModel = Yii::createObject(\tecsin\pay2\models\VoguepayMs::className(), ['aaaMerchantId' => '11111', 'mmmMemo' => 'one sparklyn yellow wedding dress', 'tttTotalCost' => '200310', 'rrrMerchantRef' => time().mt_rand(0,999999999)]);
+    $MsModel = new \tecsin\pay2\models\VoguepayMs(['aaaMerchantId' => '11111', 'mmmMemo' => 'one sparklyn yellow wedding dress', 'tttTotalCost' => '200310', 'rrrMerchantRef' => time().mt_rand(0,999999999)]);
     if($MsModel->validate()){
        return $MsModel->setRequest()->sendRequest()->sendResponse();
     } 
@@ -50,7 +50,7 @@ You can either send user to VoguePay payment page directly (this is the default)
 Or show the user a pay button (set showPayButton property to true):
 
 ```php
-    $MsModel = Yii::createObject(\tecsin\pay2\models\VoguepayMs::className(), ['aaaMerchantId' => '11111', 'mmmMemo' => 'one sparklyn yellow wedding dress', 'tttTotalCost' => '200310', 'rrrMerchantRef' => time().mt_rand(0,999999999), 'showPayButton' => true]);
+    $MsModel = new \tecsin\pay2\models\VoguepayMs(['aaaMerchantId' => '11111', 'mmmMemo' => 'one sparklyn yellow wedding dress', 'tttTotalCost' => '200310', 'rrrMerchantRef' => time().mt_rand(0,999999999), 'showPayButton' => true]);
     if($MsModel->validate()){
         $response =  $MsModel->setRequest()->sendRequest()->sendResponse();
         return $response;//response is json {status: "success|error", success|error : { message: "https://www.voguepay.com/payment-url|errorMesssge"}}
