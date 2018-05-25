@@ -3,7 +3,7 @@
 use yii\db\Migration;
 
 /**
- * Handles the creation of table `{{%voguepay_ms}}`.
+ * Handles the creation of table `{{%pay2_ms}}`.
  */
 class m170114_232715_create_voguepay_ms_table extends Migration
 {
@@ -12,7 +12,7 @@ class m170114_232715_create_voguepay_ms_table extends Migration
      */
     public function up()
     {
-        $this->createTable('{{%voguepay_ms}}', [
+        $this->createTable('{{%pay2_ms}}', [
             'msID' => $this->primaryKey(),
             'aaaMerchantId' => $this->string()->comment('Merchant ID')->notNull(),
             'mmmMemo' => $this->text()->comment('Memo')->notNull(),
@@ -31,8 +31,8 @@ class m170114_232715_create_voguepay_ms_table extends Migration
             'msStatus' => $this->string()->defaultValue('Pending'),
         ]);
         
-        $this->createIndex('IdxMref', '{{%voguepay_ms}}', 'rrrMerchantRef', true);
-        $this->createIndex('Idxmulti', '{{%voguepay_ms}}', ['aaaMerchantId', 'siteProductId']);
+        $this->createIndex('IdxMref', '{{%pay2_ms}}', 'rrrMerchantRef', true);
+        $this->createIndex('Idxmulti', '{{%pay2_ms}}', ['aaaMerchantId', 'siteProductId']);
     }
 
     /**
@@ -40,6 +40,6 @@ class m170114_232715_create_voguepay_ms_table extends Migration
      */
     public function down()
     {
-        $this->dropTable('{{%voguepay_ms}}');
+        $this->dropTable('{{%pay2_ms}}');
     }
 }

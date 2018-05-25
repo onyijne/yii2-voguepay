@@ -36,7 +36,6 @@ use yii\helpers\ArrayHelper;
 use yii\base\InvalidConfigException;
 use tecsin\pay2\models\CommandApiHistory;
 use Yii;
-use \string;
 
 /**
  * Description of CommandApi
@@ -280,9 +279,7 @@ class CommandApi extends \yii\base\Model {
              'requestConfig' => [
                  'format' => Client::FORMAT_JSON
              ],
-             'responseConfig' => [
-                 'format' => Client::FORMAT_JSON
-             ],
+             
             'transport' => CurlTransport::className()
         ]);
         parent::__construct($config);
@@ -290,8 +287,8 @@ class CommandApi extends \yii\base\Model {
     
     public function init() {
         parent::init();
-        $this->on('beforeSendCommand', [$this, 'beforeSendCommand']);
-        $this->on('afterSendCommand', [$this, 'afterSendCommand']);
+        $this->on(self::EVENT_BEFORE_SEND_COMMAND, [$this, 'beforeSendCommand']);
+        $this->on(self::EVENT_AFTER_SEND_COMMAND, [$this, 'afterSendCommand']);
     }
 
     public function fetch()
@@ -351,7 +348,7 @@ class CommandApi extends \yii\base\Model {
      * @return mixed
      * @throws InvalidConfigException
      */
-    private function setData(\string $commandType = 'single')
+    private function setData( $commandType = 'single')
     {
         $this->ref =  time().mt_rand(0,999999999);
         $this->hash = hash('sha512', $this->command_api_token.$this->task.$this->merchant_email_on_voguepay.$this->ref);
@@ -366,10 +363,10 @@ class CommandApi extends \yii\base\Model {
             return $this->setFetchDetails();
         }
         if($this->data['task'] == 'withdraw'){
-            return $this->setWithdrawalDetails($commandType);
+            return $this->setWithdrawalDetails();
         }
         if($this->data['task'] == 'pay'){
-            return $this->setPayDetails($commandType);
+            return $this->setPayDetails();
         }
         if($this->data['task'] == 'create'){
             return $this->setCreateDetails();
@@ -391,16 +388,15 @@ class CommandApi extends \yii\base\Model {
     
     /**
      * 
-     * @param string $commandType single or multiple
      * @return mixed
      * @throws InvalidConfigException
      */
-    private function setWithdrawalDetails(\string $commandType) {
+    private function setWithdrawalDetails() {
         
         //check if multiple
-        if($commandType == 'multiple'){
+        if($this->commandType == 'multiple'){
             if(!ArrayHelper::isIndexed($this->filterMultipleWithdrawData, true) || empty($this->filterMultipleWithdrawData)){
-                throw new InvalidConfigException('filterMultipleWithdrawData attribute is most be a consecutive indexed array whose values are arrays, please check the documentation.');
+                throw new InvalidConfigException('filterMultipleWithdrawData attribute most be a consecutive indexed array whose values are arrays, please check the documentation.');
             }
             //loop through every account you want to withdraw into
             $qty = count($this->filterMultipleWithdrawData) ;
@@ -423,8 +419,8 @@ class CommandApi extends \yii\base\Model {
         
     }
     
-    private function setPayDetails(string $commandType) {
-        if($commandType == 'single'){
+    private function setPayDetails() {
+        if($this->commandType == 'single'){
             if(empty($this->filterPayData) || !key_exists('amount', $this->filterPayData) || !key_exists('seller', $this->filterPayData) || !key_exists('memo', $this->filterPayData)){
                 throw new InvalidConfigException('amount, seller, and memo as all required as filterPayData property keys. Please see documentation for more.');
             }
@@ -455,36 +451,45 @@ class CommandApi extends \yii\base\Model {
         }
         $this->data = array_merge($this->data, $this->filterCreateData);
     }
+    
+    private function send()
+    {
+        $ch = curl_init($this->baseUrl);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 2);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $this->data);
+        
+        $response = curl_exec($ch);
+        curl_close($ch);
+        return $response;
+    }
 
     /**
-     * @return mixed Sends the command and return it's json response
+     * @return  json response
      */
     protected function sendCommand()
     {
-        $this->cResponse = $this->client->setMethod('post')
-                                ->setData($this->data)
-                                ->setOptions([
-                                    CURLOPT_HEADER => false,
-                                    CURLOPT_TIMEOUT => 10,
-                                    CURLOPT_MAXREDIRS => 2,
-                                    CURLOPT_RETURNTRANSFER => true,
-                                    CURLOPT_FOLLOWLOCATION => true,               
-                                ])->send();
-        $this->trigger(self::EVENT_AFTER_SEND_COMMAND);
-        if(stripos($this->cResponse->content, '-') || !$this->VerifyResponse() ){
+        $this->trigger(self::EVENT_BEFORE_SEND_COMMAND);
+        $this->cResponse = $this->send();
+        $this->VerifyResponse();
+        if(array_key_exists($this->cResponse, $this->errorCodes())){
             return Json::encode([
                 'error' => [
-                    'message' => $this->getResponseError($this->cResponse->content)
+                    'message' => $this->getResponseError($this->cResponse)
                 ]
             ]);
         }
         
-        return Json::decode($this->cResponse->content);
+        return $this->cResponse;
     }
     
-    public function getResponseError($errorCode)
+    public function errorCodes()
     {
-        $messages = [
+        return [
             '-2' => 'Compromised hash value or Username does not match, probably a wrong data.',
             '-3' => 'Operation failed.',
             'X001' => 'Invalid Merchant ID',
@@ -520,31 +525,42 @@ class CommandApi extends \yii\base\Model {
             'P010' => 'Payment failed',
             'P011' => 'Payment failed',
         ];
+    }
+
+    
+
+    public function getResponseError($errorCode)
+    {
+        $messages = $this->errorCodes();
         if(key_exists($errorCode, $messages)){
             return $messages[$errorCode];
         } else {
-            return 'Unknown error occured.';    
+            return 'unknown error';    
         }
     }
     
     public function getResponse()
     {
-        return Json::decode($this->cResponse->content);
+        return $this->cResponse;
     }
     
     public function VerifyResponse()
     {
-        $reply_array = Json::decode($this->cResponse->content);
+        $reply_array = Json::decode($this->getResponse());
         //Check that the result is actually from voguepay.com
+        if(!array_key_exists('hash', $reply_array)){
+            return false;
+        }
         $received_hash = $reply_array['hash'];
-        $expected_hash = hash('sha512',  $this->command_api_token.  $this->merchant_email_on_voguepay.$reply_array['salt']);
+        $expected_hash = hash('sha512',  $this->command_api_token.$this->merchant_email_on_voguepay.$reply_array['salt']);
         if($received_hash != $expected_hash || $this->my_username != $reply_array['username']){
 	    //Something is wrong. Discard result
+            $this->cResponse = '-2';
             return false;
         } else if(!key_exists('list', $this->data) && $reply_array['status'] != 'OK') {
             //not a multiple request
                 //Operation failed
-                $this->cResponse->content = '-3';
+                $this->cResponse = '-3';
                 return false;
 	
         } else {
@@ -560,19 +576,19 @@ class CommandApi extends \yii\base\Model {
      */
     public function notifySystem()
     {
-        $reply_array = Json::decode($this->cResponse->content);
+        $reply_array = Json::decode($this->cResponse);
         if($this->commandType == 'single'){
-            $status = ((stripos($this->cResponse->content, '-') == 0) || !$this->VerifyResponse() ) ? $this->getResponseError($this->cResponse->content) : $reply_array['description'];
+            $status = (array_key_exists($this->cResponse, $this->errorCodes())) ? $this->getResponseError($this->cResponse) : $reply_array['description'];
             $model = new CommandApiHistory(['ref' => $this->ref, 'task' => $this->task, 'commandType' => $this->commandType, 'status' => $status]);
-            $model->save();
+            $model->save(false);
         } elseif ($this->commandType == 'multiple') {
             foreach($reply_array['list'] as $list){
-		$status = ((stripos($this->cResponse->content, '-') == 0) || !$this->VerifyResponse() ) ? $this->getResponseError($this->cResponse->content) : $list['description'];
+		$status = (array_key_exists($this->cResponse, $this->errorCodes())) ? $this->getResponseError($this->cResponse) : $list['description'];
                 $model = new CommandApiHistory(['ref' => $this->ref, 'task' => $this->task, 'commandType' => $this->commandType, 'status' => $status]);
-                $model->save();
+                $model->save(false);
        	    }
         } else {
-            return;
+            return false;
         }
         return true;
     }

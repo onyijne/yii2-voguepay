@@ -14,13 +14,13 @@ The preferred way to install this extension is through [composer](http://getcomp
 Either run
 
 ```
-composer require --prefer-dist tecsin/yii2-voguepay "^0.0.2"
+composer require --prefer-dist tecsin/yii2-voguepay "~1.0.0"
 ```
 
 or add
 
 ```
-"tecsin/yii2-voguepay": "^0.0.2"
+"tecsin/yii2-voguepay": "~1.0.0"
 ```
 
 to the require section of your `composer.json` file.
@@ -33,6 +33,75 @@ First set up the database by running the migration code :
 
 ```
 php yii migrate --migrationPath="@vendor/tecsin/yii2-voguepay/migrations"
+```
+
+After which you should add pay2 to the modules section of your application component like
+
+```php
+'components' => [
+    //...
+    'modules' => [
+        //...
+        'pay2' => [
+            'class' => 'tecsin\pay2\Module',
+            'userModelClass' => 'app\models\User',
+            'controllerMap' => [
+                'manage' => [
+                    'class' => 'yii2mod\comments\controllers\ManageController',
+                    'layout' => '@app/modules/admin/views/layouts/main',
+                    'accessControlConfig' => [
+                        'class' => 'yii\filters\AccessControl',
+                        'rules' => [
+                            [
+                                'allow' => true,
+                                'roles' => ['admin', 'manager'],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ],
+],
+```
+
+ and setup your VoguePay details via project.com/pay2. 
+
+Notification and Pay Now Button
+------
+
+Get notifications from VoguePay and save data to db before sending user to voguepay.
+
+```php
+<?php
+namespace app\controllers;
+
+class SiteController extends \yii\web\Controller
+{
+    //...
+    public function actions()
+    {
+        return [
+            //...
+            'voguepay-notification' => [
+                'class' => 'tecsin\pay2\actions\Pay2NotificationAction', // see this class if you will change anything for better explanations
+                'modelClass' => 'tecsin\pay2\models\NotificationExample'//this is the default model to run for every notification 
+                'method' => 'voguepay'//the method to be called in modelClass, and must have a parameter which should be an array of transaction from voguepay
+            ],
+            'set-data' => [
+                'class' => 'tecsin\pay2\actions\InitSaleAction', //redirects user to voguepay payment page after saving the pay now form data to db
+                //this is mandatory if you use the PayButton widget
+            ],
+        ];
+    }
+}
+```
+
+Display pay now button
+----
+
+```php
+    <?= tecsin\pay2\widgets\PayButton::widget() ?>
 ```
 
 Mobile/Server-to-Server
@@ -62,13 +131,14 @@ Command API
 
 With the Command API you can Fetch records of transactions, Pay (send money) to VoguePay merchants, Withdraw money to various bank accounts, and create a new user on VoguePay.
 
+See tecsin\pay2\models\Money for withdrawal example
+---
+
 ## Read More.
  
 See [VoguePay](https://voguepay.com/developers) Developer Page
 
-TODO
+Contributions
 -----
 
-Add user interface for management.
-
-Update documentation. 
+Contributions re highly welcome in any form deemed fit

@@ -3,7 +3,7 @@
 use yii\db\Migration;
 
 /**
- * Handles the creation of table `commandapi_history`.
+ * Handles the creation of table `pay2_command_history`.
  */
 class m170119_003820_create_commandapi_history_table extends Migration
 {
@@ -12,14 +12,14 @@ class m170119_003820_create_commandapi_history_table extends Migration
      */
     public function up()
     {
-        $this->createTable('{{%commandapi_history}}', [
+        $this->createTable('{{%pay2_command_history}}', [
             'id' => $this->primaryKey(),
             'ref' => $this->string(),
             'task' => $this->string(),
             'type' => $this->string(),
             'status' => $this->string(),
         ]);
-        $this->createIndex('IdxRefTask', '{{%commandapi_history}}', ['ref', 'task']);
+        $this->createIndex('IdxRefTask', '{{%pay2_command_history}}', ['ref', 'task']);
     }
 
     /**
@@ -27,6 +27,6 @@ class m170119_003820_create_commandapi_history_table extends Migration
      */
     public function down()
     {
-        $this->dropTable('{{%commandapi_history}}');
+        $this->dropTable('{{%pay2_command_history}}');
     }
 }

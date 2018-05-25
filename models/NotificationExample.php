@@ -8,6 +8,8 @@
 
 namespace tecsin\pay2\models;
 
+use tecsin\pay2\models\Pay2Sales;
+
 /**
  * Description of NotificationExample
  *
@@ -15,30 +17,47 @@ namespace tecsin\pay2\models;
  */
 class NotificationExample  {
     
-     public function voguepayNotification(array $transaction ) {
+    /**
+     * 
+     * @param array $transaction
+     * @return boolean
+     */
+     public function voguepay($transaction ) {
         $ref = $transaction['merchant_ref'];
-        $sales = (Sales::find()->where(['ref'=> $ref])->exists()) ? Sales::findOne(['ref'=> $ref]) : new Sales();
-        if($sales->remark == 'Payment complete'){
-            //to avoid crediting a transaction twice
-            return true;
-        };
+        if(($sales = Pay2Sales::findOne(['ref'=> $ref])) == null){
+            $sales = new Pay2Sales([
+                'memo' => $transaction['memo'],
+                'ref' => $transaction['ref'],
+                'total' => $transaction['total']
+                ]);
+        } 
+        if(!$sales->isNewRecord){
+            if($sales->remark == 'Payment complete'){
+               //to avoid crediting a transaction twice
+                return true;
+            }
+        }
+        
         if($transaction['status'] == 'Approved'){
             if($transaction['total'] !== $sales->total){
-               $sales->remark = 'Partial payment of '.$transaction['total'];
-            } else {             
+                    //it is not a new record and total did not match
+                $sales->remark = 'Paid '.$transaction['total'].' instead of '.$sales->total;
+            } else {
                 $this->topUpUnit('something to query with');        
                 $sales->remark = 'Payment complete';
-            }    
+            }                
+               
             $sales->total_paid = $transaction['total_paid'];
-            $sales->credit = $transaction['total_credited_to_merchant'];
-            $sales->matureDate = $transaction['fund_maturity'];
-            $sales->salesDate = $transaction['date'];
+            $sales->received_amount = $transaction['total_credited_to_merchant'];
+            $sales->mature_date = $transaction['fund_maturity'];            
+            $sales->extra_charges = $transaction['extra_charges'];           
         } else {
             $sales->remark = $transaction['status'];
         }
-
-        $sales->gateway = 'VoguePay';
-        $sales->update('false');
+        $sales->referrer = $transaction['referrer'];
+        $sales->transaction_date = $transaction['date'];
+        $sales->gateway = $transaction['gateway'];
+        $sales->save(false);
         return true;
     }
     
