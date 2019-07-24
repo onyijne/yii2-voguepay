@@ -1,5 +1,7 @@
-I trnsfered this repo from my organization as I won't be needing the organization (tecsin)[https://github.com/tecsin] again for proper management sake.
+I transfered this repo from my organization as I won't be needing the organization [tecsin](https://github.com/tecsin) again for proper management sake.
  Will update the files soon
+ ====
+ 
 Pay2
 ====
 VoguePay Payment Processor Extension for Yii2 Framework (Command API is in beta).
